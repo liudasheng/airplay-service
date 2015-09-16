@@ -25,45 +25,19 @@ public:
     {
     	TRACE();
     }
+
+    sp<IAirplay> connect(const sp<IAirplayClient>& AirplayClient)
+    {
+        TRACE();
+        ALOGV("Send CONNECT\n");
+        Parcel data, reply;
+
+        data.writeInterfaceToken(IAirplayService::getInterfaceDescriptor());
+        data.writeStrongBinder(AirplayClient->asBinder());
+        remote()->transact(IAirplayService::CONNECT, data, &reply);
+        return interface_cast<IAirplay>(reply.readStrongBinder());
+    }   
 		
-	virtual int StartAirplayService() 
-	{
-		TRACE();
-		Parcel data, reply;
-		data.writeInterfaceToken(IAirplayService::getInterfaceDescriptor()); 
-		remote()->transact(IAirplayService::START_AIRPLAY, data, &reply);
-		return (reply.readInt32());
-	}
-
-	virtual int StopAirplayService() 
-	{
-		TRACE();
-		Parcel data, reply;
-		data.writeInterfaceToken(IAirplayService::getInterfaceDescriptor()); 
-		remote()->transact(IAirplayService::STOP_AIRPLAY, data, &reply);
-		return (reply.readInt32());
-	}
-
-	virtual int SetAirplayHostName(const char *apname) 
-	{
-		TRACE();
-		Parcel data, reply;
-		data.writeInterfaceToken(IAirplayService::getInterfaceDescriptor()); 
-        data.writeCString(apname);
-		remote()->transact(IAirplayService::SET_APNAME, data, &reply);
-		return (reply.readInt32());
-	}
-
-	virtual int GetAirplayHostName(char *apname) 
-	{
-		TRACE();
-		Parcel data, reply;
-		data.writeInterfaceToken(IAirplayService::getInterfaceDescriptor()); 
-		remote()->transact(IAirplayService::GET_APNAME, data, &reply);
-        reply.read(apname, 128);
-		return (reply.readInt32());
-	}	    
-
 };
 IMPLEMENT_META_INTERFACE(AirplayService, "android.IAirplayService");
 
@@ -72,32 +46,16 @@ status_t BnAirplayService::onTransact(
 {
 	TRACE();
 	switch(code) {
-	case START_AIRPLAY: {
-		CHECK_INTERFACE(IAirplayService, data, reply);
-		reply->writeInt32(StartAirplayService());
-		return NO_ERROR;
-		} break;
-	case STOP_AIRPLAY: {
-		CHECK_INTERFACE(IAirplayService, data, reply);
-		reply->writeInt32(StopAirplayService());
-		return NO_ERROR;
-		} break;
-
-	case SET_APNAME: {
-		CHECK_INTERFACE(IAirplayService, data, reply);
-		reply->writeInt32(SetAirplayHostName(data.readCString()));
-		return NO_ERROR;
-		} break;
-
-	case GET_APNAME: {
-		CHECK_INTERFACE(IAirplayService, data, reply);
-        char apname[128]={0};
-        int ret = GetAirplayHostName(apname);
-        reply->write(apname, 128);
-		reply->writeInt32(ret);
-		return NO_ERROR;
-		} break;
+        case CONNECT:{
+            ALOGV("Receive CONNECT\n");
+            CHECK_INTERFACE(IAirplayService, data, reply);
+            sp<IAirplayClient> AirplayClient = interface_cast<IAirplayClient>(data.readStrongBinder());
     
+            sp<IAirplay> Airplay = connect(AirplayClient);
+            reply->writeStrongBinder(Airplay->asBinder());
+            return NO_ERROR;
+        } break;
+
 	default:
 		return BBinder::onTransact(code, data, reply, flags);
 	}

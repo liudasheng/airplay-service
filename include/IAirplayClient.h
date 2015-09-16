@@ -1,29 +1,26 @@
 
-#ifndef IAIRPLAYSERVICE_H
-#define IAIRPLAYSERVICE_H
+#ifndef IAIRPLAYCLIENT_H
+#define IAIRPLAYCLIENT_H
 
 #include <utils/RefBase.h>
 #include <binder/IInterface.h>
 #include <binder/Parcel.h>  //for data transact
 #include <binder/IMemory.h>
 
-#include "IAirplayClient.h"
-#include "IAirplay.h"
-
 namespace android {
 
 
-class IAirplayService : public IInterface
+class IAirplayClient : public IInterface
 {
 public:
     enum {
-        CONNECT = IBinder::FIRST_CALL_TRANSACTION,
+        NOTIFY_CALLBACK = IBinder::FIRST_CALL_TRANSACTION,
     };
-    DECLARE_META_INTERFACE(AirplayService);//must need
-    virtual sp<IAirplay> connect(const sp<IAirplayClient>& AirplayClient) = 0;
+    DECLARE_META_INTERFACE(AirplayClient);//must need
+    virtual void notify(int msg, int ext1, int ext2) = 0;   
 };
 
-class BnAirplayService: public BnInterface<IAirplayService>
+class BnAirplayClient: public BnInterface<IAirplayClient>
 {
 public:
     virtual status_t onTransact( uint32_t code,
@@ -35,5 +32,5 @@ public:
 
 
 }; //namespace
-#endif //IAIRPLAYSERVICE_H
+#endif //IAIRPLAYCLIENT_H
 

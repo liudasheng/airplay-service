@@ -11,59 +11,66 @@
 #include <binder/ProcessState.h>
 #include <binder/IServiceManager.h>
 
-#include "AirplayService.h"
+#include "Airplay.h"
 
 #define TRACE() ALOGV("[%d] %s", __LINE__, __func__)
 
 using namespace android;
 
-Mutex mLock;
-sp<IAirplayService> getTestService() {
-	TRACE();
-	Mutex::Autolock _l(mLock);
-	sp<IAirplayService> pTestService;
-	TRACE();
-	sp<IServiceManager> sm = defaultServiceManager();
-	sp<IBinder> binder;
-	do {
-		binder = sm->getService(String16("AirplayService"));
-		TRACE();
-		if (binder != 0)
-			break;
-		ALOGW("AirplayService not published, waiting...");
-		usleep(500000); // 0.5 s
-	} while(true);
+static sp<Airplay> pAirplay = NULL;
 
-	pTestService = interface_cast<IAirplayService>(binder);
-	TRACE();
-	ALOGE_IF(pTestService==0, "no AirplayService!?");
-	return pTestService;
+class ClientListener : public AirplayListener
+{
+public:
+    ClientListener(const sp<Airplay>& airplay)
+       : mAirplay(airplay)
+    {
+    }
+    virtual void notify(int msg, int ext1, int ext2);
+private:
+    sp<Airplay> mAirplay;
+};
+
+void ClientListener::notify(int msg, int ext1, int ext2)
+{
+    printf("notify: msg=%d, ext=%d, ext2=%d\n", msg, ext1, ext2);
 }
+
 
 int main(int argc, char** argv)
 {
-	sp<IAirplayService> pTestService = getTestService();
+	pAirplay = Airplay::connect();
 	printf("[client] running pid=%d,tid=%d\n",getpid(),gettid());
-	
+
+    if(pAirplay == NULL )
+    {
+        printf("can not connect to AirplayService!\n");
+        return -1;
+    }
+
+    pAirplay->setListener(new ClientListener(pAirplay));
+    
+    ProcessState::self()->startThreadPool();
+    
     char apname[128]={0};
     memset(apname, 0, 128);
-    pTestService->GetAirplayHostName(apname);
+    pAirplay->GetHostName(apname);
     printf("get airplay host name:%s\n", apname);
 
     printf("set airplay host name:%s\n", "airplay_o2");
-    pTestService->SetAirplayHostName("airplay_o2");
+    pAirplay->SetHostName("airplay_o2");
 
     memset(apname, 0, 128);
-    pTestService->GetAirplayHostName(apname);
+    pAirplay->GetHostName(apname);
     printf("get airplay host name:%s\n", apname);   
 
     printf("start airplay service..\n");
-    pTestService->StartAirplayService();
+    pAirplay->Start();
 
     sleep(30);
 
     printf("stop airplay service\n");
-    pTestService->StopAirplayService();
+    pAirplay->Stop();
     
     
 }

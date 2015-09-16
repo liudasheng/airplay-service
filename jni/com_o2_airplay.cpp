@@ -1,5 +1,5 @@
 #define LOG_NDEBUG 0
-#define LOG_TAG "O2Airplay"
+#define LOG_TAG "Airplay-JNI"
 
 #include "utils/Log.h"
 
@@ -12,6 +12,7 @@
 #include "jni.h"
 #include "JNIHelp.h"
 #include "android_runtime/AndroidRuntime.h"
+#include "android_runtime/Log.h"
 #include "utils/Errors.h"  // for status_t
 #include "utils/KeyedVector.h"
 #include "utils/String8.h"
@@ -25,37 +26,75 @@
 
 #include <locale.h>
 
-#include "AirplayService.h"
+#include "Airplay.h"
 
 #define TRACE() ALOGV("[%d] %s", __LINE__, __func__)
 
 using namespace android;
 
-sp<IAirplayService> pAirplayService;
-Mutex mLock;
 
-sp<IAirplayService> getAirplayService() {
-	TRACE();
-	Mutex::Autolock _l(mLock);
-	sp<IAirplayService> pAirplay;
-	TRACE();
-	sp<IServiceManager> sm = defaultServiceManager();
-	sp<IBinder> binder;
-	do {
-		binder = sm->getService(String16("AirplayService"));
-		TRACE();
-		if (binder != 0)
-			break;
-		ALOGW("AirplayService not published, waiting...");
-		usleep(500000); // 0.5 s
-	} while(true);
+struct fields_t {
+    jmethodID   post_event;
+};
+static fields_t fields;
 
-	pAirplay = interface_cast<IAirplayService>(binder);
-	TRACE();
-	ALOGE_IF(pAirplay==0, "no AirplayService!?");
-	return pAirplay;
+static sp<Airplay> airplay = NULL;
+
+
+// ----------------------------------------------------------------------------
+// ref-counted object for callbacks
+class JNIAirplayListener: public AirplayListener
+{
+public:
+    JNIAirplayListener(JNIEnv* env, jobject thiz, jobject weak_thiz);
+    ~JNIAirplayListener();
+    virtual void notify(int msg, int ext1, int ext2);
+private:
+    JNIAirplayListener();
+    jclass      mClass;     // Reference to airplay class
+    jobject     mObject;    // Weak ref to airplay Java object to call on
+};
+
+JNIAirplayListener::JNIAirplayListener(JNIEnv* env, jobject thiz, jobject weak_thiz)
+{
+
+    // Hold onto the MediaPlayer class for use in calling the static method
+    // that posts events to the application thread.
+    jclass clazz = env->GetObjectClass(thiz);
+    if (clazz == NULL) {
+        ALOGE("Can't find com/o2/Airplay");
+        jniThrowException(env, "java/lang/Exception", NULL);
+        return;
+    }
+    mClass = (jclass)env->NewGlobalRef(clazz);
+
+    // We use a weak reference so the MediaPlayer object can be garbage collected.
+    // The reference is only used as a proxy for callbacks.
+    mObject  = env->NewGlobalRef(weak_thiz);
 }
 
+JNIAirplayListener::~JNIAirplayListener()
+{
+    // remove global references
+    JNIEnv *env = AndroidRuntime::getJNIEnv();
+    env->DeleteGlobalRef(mObject);
+    env->DeleteGlobalRef(mClass);
+}
+
+
+void JNIAirplayListener::notify(int msg, int ext1, int ext2)
+{
+    JNIEnv *env = AndroidRuntime::getJNIEnv();
+
+    env->CallStaticVoidMethod(mClass, fields.post_event, mObject,
+                              msg, ext1, ext2);
+
+    if (env->ExceptionCheck()) {
+        ALOGW("An exception occurred while notifying an event.");
+        LOGW_EX(env);
+        env->ExceptionClear();
+    }
+}
 
 static jstring stringToJstring(JNIEnv* env, const char* pat){
     jclass strClass = env->FindClass("java/lang/String");
@@ -85,24 +124,60 @@ static char* jstringTostring(JNIEnv* env, jstring jstr)
     return rtn;
 }
 
+/*End by eric_wang. Notify hdmi status.*/
 
-JNIEXPORT jint JNICALL com_o2_airplay_StartAirplayService
+// This function gets some field IDs, which in turn causes class initialization.
+// It is called from a static block in MediaPlayer, which won't run until the
+// first time an instance of this class is used.
+static void com_o2_airplay_native_init(JNIEnv *env)
+{
+    jclass clazz;
+
+    clazz = env->FindClass("com/o2/airplay/Airplay");
+    if (clazz == NULL) {
+        return;
+    }
+
+    fields.post_event = env->GetStaticMethodID(clazz, "postEventFromNative",
+                                               "(Ljava/lang/Object;IIILjava/lang/Object;)V");
+    if (fields.post_event == NULL) {
+        return;
+    }
+}
+
+static void com_o2_airplay_native_setup(JNIEnv *env, jobject thiz, jobject weak_this)
+{
+    ALOGV("native_setup");
+    airplay = Airplay::connect();
+    if (airplay == NULL) {
+        jniThrowException(env, "java/lang/RuntimeException", "Out of memory");
+        return;
+    }
+
+    // create new listener and give it to airplay
+    sp<JNIAirplayListener> listener = new JNIAirplayListener(env, thiz, weak_this);
+    airplay->setListener(listener);
+}
+
+
+JNIEXPORT jint JNICALL com_o2_airplay_Start
 (JNIEnv *env, jobject thiz)
 {
     TRACE();
-    int ret = pAirplayService->StartAirplayService();
+    int ret = airplay->Start();
     return ret;
 }
 
-JNIEXPORT jint JNICALL com_o2_airplay_StopAirplayService
+JNIEXPORT jint JNICALL com_o2_airplay_Stop
 (JNIEnv *env, jobject thiz)
 {
     TRACE();
-    int ret = pAirplayService->StopAirplayService();
+    
+    int ret = airplay->Stop();
     return ret;
 }
 
-JNIEXPORT jint JNICALL com_o2_airplay_SetAirplayHostName
+JNIEXPORT jint JNICALL com_o2_airplay_SetHostName
 (JNIEnv *env, jobject thiz, jobject data)
 {
     TRACE();
@@ -112,17 +187,18 @@ JNIEXPORT jint JNICALL com_o2_airplay_SetAirplayHostName
 	jstring HostName = (jstring)env->GetObjectField(data, idHostName);
     
     char *name = jstringTostring(env, HostName);
-    int ret = pAirplayService->SetAirplayHostName(name);
+    
+    int ret = airplay->SetHostName(name);
     
     return ret;
 }
 
-JNIEXPORT jint JNICALL com_o2_airplay_GetAirplayHostName
+JNIEXPORT jint JNICALL com_o2_airplay_GetHostName
 (JNIEnv *env, jobject thiz, jobject data)
 {
     TRACE();
     char name[128] = {0};
-    int ret = pAirplayService->GetAirplayHostName(name);
+    int ret = airplay->GetHostName(name);
 
 	jclass datacls = env->GetObjectClass(data);
 	jfieldID idHostName = env->GetFieldID(datacls, "HostName", "Ljava/lang/String;");
@@ -134,10 +210,12 @@ JNIEXPORT jint JNICALL com_o2_airplay_GetAirplayHostName
 // ----------------------------------------------------------------------------
 //the native method need to be registered
 static JNINativeMethod gMethods[] = {
-{"StartAirplayService",   "()I",                             (void *)com_o2_airplay_StartAirplayService},
-{"StopAirplayService",    "()I",	                         (void *)com_o2_airplay_StopAirplayService},
-{"SetAirplayHostName",    "(Lcom/o2/airplay/AirplayData;)I", (void *)com_o2_airplay_SetAirplayHostName},
-{"GetAirplayHostName",    "(Lcom/o2/airplay/AirplayData;)I", (void *)com_o2_airplay_GetAirplayHostName},
+{"native_init",      "()V",                             (void *)com_o2_airplay_native_init},
+{"native_setup",     "(Ljava/lang/Object;)V",           (void *)com_o2_airplay_native_setup},
+{"Start",            "()I",                             (void *)com_o2_airplay_Start},
+{"Stop",             "()I",	                            (void *)com_o2_airplay_Stop},
+{"SetHostName",      "(Lcom/o2/airplay/AirplayData;)I", (void *)com_o2_airplay_SetHostName},
+{"GetHostName",      "(Lcom/o2/airplay/AirplayData;)I", (void *)com_o2_airplay_GetHostName},
 
 };
 
@@ -145,7 +223,6 @@ static JNINativeMethod gMethods[] = {
 // This function only registers the native methods
 int register_com_o2_airplay(JNIEnv *env)
 {
-    pAirplayService = getAirplayService();
     
     ALOGV("register_com_o2_airplay was called");
     return AndroidRuntime::registerNativeMethods(env,
