@@ -48,7 +48,7 @@ class JNIAirplayListener: public AirplayListener
 public:
     JNIAirplayListener(JNIEnv* env, jobject thiz, jobject weak_thiz);
     ~JNIAirplayListener();
-    virtual void notify(int msg, int ext1, int ext2);
+    void notify(int msg, int ext1, int ext2);
 private:
     JNIAirplayListener();
     jclass      mClass;     // Reference to airplay class
@@ -84,10 +84,13 @@ JNIAirplayListener::~JNIAirplayListener()
 
 void JNIAirplayListener::notify(int msg, int ext1, int ext2)
 {
+    ALOGV("%s, msg=%d, ext1=%d, ext2=%d\n",__func__, msg, ext1, ext2);
+
+
     JNIEnv *env = AndroidRuntime::getJNIEnv();
 
     env->CallStaticVoidMethod(mClass, fields.post_event, mObject,
-                              msg, ext1, ext2);
+                              msg, ext1, ext2, NULL);
 
     if (env->ExceptionCheck()) {
         ALOGW("An exception occurred while notifying an event.");
@@ -95,6 +98,7 @@ void JNIAirplayListener::notify(int msg, int ext1, int ext2)
         env->ExceptionClear();
     }
 }
+
 
 static jstring stringToJstring(JNIEnv* env, const char* pat){
     jclass strClass = env->FindClass("java/lang/String");

@@ -245,9 +245,9 @@ void Airplay::notify(int msg, int ext1, int ext2)
     if(listener != NULL)
     {
         Mutex::Autolock _l(Airplay::mLock);
-        ALOGW("callback application");
+        ALOGV("callback application");
         listener->notify(msg, ext1, ext2);
-        ALOGW("back from callback");
+        ALOGV("back from callback");
     }
 }
 

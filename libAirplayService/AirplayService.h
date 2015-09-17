@@ -14,17 +14,23 @@
 
 namespace android {
 
-typedef void (*notify_callback_f)(int msg, int ext1, int ext2);
+//typedef void (*notify_callback_f)(int msg, int ext1, int ext2);
 
 class AirplayService : public BnAirplayService
 {
     class Client;
 public:
-    static AirplayService* instantiate();
+    static sp<AirplayService> instantiate();
 
     // IAirplayService interface
     virtual sp<IAirplay> connect(const sp<IAirplayClient>& airplayClient);
     void removeClient(wp<Client> client);
+    virtual void notify(int msg, int ext1, int ext2);
+    static int notifyhandle(int msg, int ext1, int ext2);
+    virtual void RegisterNotifyFn();
+
+
+    
 private:
     
     // ----------------------------------------------------------------------------
@@ -40,26 +46,9 @@ private:
         const sp<IAirplayClient>& getAirplayClient() const
         {
             return m_AirplayClient;
-        };
-        virtual void notify(int msg, int ext1, int ext2);        
+        };        
         static Mutex m_FuncLock;
-    private:
-        static int notifyhandle(int msg, int ext1, int ext2);
-        virtual void RegisterNotifyFn();
-
-        /*
-        notify_callback_f mNotify;
-        Mutex  mNotifyLock;
-        virtual void setNotifyCallback(notify_callback_f notifyFunc) {
-            Mutex::Autolock autoLock(mNotifyLock);
-            mNotify = notifyFunc;
-        }
-        
-        void sendEvent(int msg, int ext1=0, int ext2=0) {
-            Mutex::Autolock autoLock(mNotifyLock);
-            if (mNotify) mNotify(msg, ext1, ext2);
-        }*/
-        
+    private:        
         friend class AirplayService;
         Client(const sp<AirplayService>& aiplayService,
                const sp<IAirplayClient>& airplayClient,

@@ -55,6 +55,7 @@ public class Airplay {
 
         @Override
         public void handleMessage(Message msg) {
+        //Log.v(TAG, "handleMessage: " + msg.what +" " + msg.arg1 + " " + msg.arg2);
             switch(msg.what) {
             case MEDIA_PREPARED:
                 return;
@@ -100,6 +101,7 @@ public class Airplay {
 
         if (ap.mEventHandler != null) {
             Message m = ap.mEventHandler.obtainMessage(what, arg1, arg2, obj);
+			//Log.v(TAG, "postEventFromNative: " + m.what +" " + m.arg1 + " " + m.arg2);
             ap.mEventHandler.sendMessage(m);
         }
     }

@@ -17,29 +17,79 @@
 
 #define TRACE() ALOGV("[%d] %s", __LINE__, __func__)
 
+#define __GETCLIENTINIT(clients, x)        \
+sp<Client> x;                   \
+for(int kk=0; kk<(int)(clients.size()); kk++)    \
+{\
+    x = clients[kk].promote();
+
+#define __GETCLIENTEND()        \
+}
+
+
 namespace android {
 
 Mutex mLock;
 
-AirplayService* AirplayService::instantiate() {
+static sp<AirplayService> pAirplayService = NULL;
+
+void sendEvent(int msg, int ext1, int ext2)
+{
+    if(pAirplayService != NULL)
+    {
+         ALOGD("%s: msg=%d, ext1=%d, ext2=%d\n", __func__, msg, ext1, ext2);
+         pAirplayService->notify(msg, ext1, ext2);
+    }
+    return;
+}
+
+sp<AirplayService> AirplayService::instantiate() 
+{
 	TRACE();
-    AirplayService* airplayService = new AirplayService();
+    pAirplayService = new AirplayService();
     ALOGV("AirplayService instantiate\n");
 	defaultServiceManager()->addService(
-			String16("AirplayService"), airplayService);
-    return airplayService;
+			String16("AirplayService"), pAirplayService);
+    return pAirplayService;
 }
 
 AirplayService::AirplayService()
 {
 	TRACE();
     ALOGI("AirplayService started: pid=%d", getpid());
+    RegisterNotifyFn();
 }
 
 AirplayService::~AirplayService()
 {
 	TRACE();
 }
+
+int AirplayService::notifyhandle(int msg, int ext1, int ext2)
+{
+    ALOGD("%s: msg=%d, ext1=%d, ext2=%d\n", __func__, msg, ext1, ext2);
+
+    sendEvent(msg, ext1, ext2);
+
+    return 0;
+}
+
+void AirplayService::RegisterNotifyFn()
+{
+    TRACE();
+    register_airplay_notify(notifyhandle);
+}
+
+void AirplayService::notify(int msg, int ext1, int ext2)
+{
+    ALOGD("notify: msg=%d, ext1=%d, ext2=%d\n", msg, ext1, ext2);
+        
+    __GETCLIENTINIT(m_Clients, mCurrentClient)
+    mCurrentClient->m_AirplayClient->notify(msg, ext1, ext2);
+    __GETCLIENTEND()
+
+}
+
 
 sp<IAirplay> AirplayService::connect(const sp<IAirplayClient>& airplayClient)
 {
@@ -78,8 +128,6 @@ AirplayService::Client::Client(const sp<AirplayService>& airplayService,
 {
     ALOGV("AirplayService::Client constructor(callingPid %d)\n", clientPid);
     m_ConnId = m_AirplayService->incUsers();
-    //setNotifyCallback(notify);
-    RegisterNotifyFn();
 }
 
 AirplayService::Client::~Client()
@@ -97,31 +145,11 @@ void AirplayService::Client::disconnect()
     m_AirplayClient.clear();
 }
 
-void AirplayService::Client::notify(int msg, int ext1, int ext2)
-{
-    TRACE();    
-}
-
-int AirplayService::Client::notifyhandle(int msg, int ext1, int ext2)
-{
-    ALOGD("notifyhandle: msg=%d, ext1=%d, ext2=%d\n", msg, ext1, ext2);
-    //m_AirplayClient->notify(msg, ext1, ext2);
-    return 0;
-}
-
-void AirplayService::Client::RegisterNotifyFn()
-{
-    TRACE();
-    register_airplay_notify(notifyhandle);
-}
-
-
 int AirplayService::Client::Start()
 {	
 	TRACE();
 	return start_airplay();
 }
-
 
 int AirplayService::Client::Stop()
 {	
