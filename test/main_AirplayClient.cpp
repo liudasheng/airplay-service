@@ -31,9 +31,33 @@ private:
     sp<Airplay> mAirplay;
 };
 
+MetaData_t MetaData;
+
 void ClientListener::notify(int msg, int ext1, int ext2)
 {
     printf("notify: msg=%d, ext=%d, ext2=%d\n", msg, ext1, ext2);
+
+    switch(msg)
+    {
+        case 200:
+            switch(ext1)
+            {
+                case 800:
+                    memset(&MetaData, 0, sizeof(MetaData_t));
+                    pAirplay->GetMetaData(&MetaData);
+                    printf("META album: %s\n", MetaData.album);
+                    printf("META artist: %s\n", MetaData.artist);
+                    printf("META genre: %s\n", MetaData.genre);
+                    printf("META title: %s\n", MetaData.title);
+                    break;
+                default:
+                    break;
+            }
+
+        default:
+            break;
+    }
+    return ;       
 }
 
 
@@ -66,6 +90,8 @@ int main(int argc, char** argv)
 
     printf("start airplay service..\n");
     pAirplay->Start();
+
+    while(1);
 
     sleep(30);
 

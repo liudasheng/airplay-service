@@ -1,4 +1,4 @@
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "Airplay-JNI"
 
 #include "utils/Log.h"
@@ -211,6 +211,31 @@ JNIEXPORT jint JNICALL com_o2_airplay_GetHostName
     return ret;
 }
 
+JNIEXPORT jint JNICALL com_o2_airplay_GetMetaData
+(JNIEnv *env, jobject thiz, jobject data)
+{
+    TRACE();
+    MetaData_t MetaData;
+    memset(&MetaData, 0, sizeof(MetaData_t));
+    int ret = airplay->GetMetaData(&MetaData);
+
+    ALOGV("%s album: %s\n", __func__,MetaData.album);
+    ALOGV("%s artist: %s\n", __func__,MetaData.artist);
+    ALOGV("%s genre: %s\n", __func__,MetaData.genre);
+    ALOGV("%s title: %s\n", __func__,MetaData.title);       
+
+	jclass datacls = env->GetObjectClass(data);
+	env->SetObjectField(data, env->GetFieldID(datacls, "MetaArtist", "Ljava/lang/String;"), stringToJstring(env,MetaData.artist));
+    env->SetObjectField(data, env->GetFieldID(datacls, "MetaAlbum", "Ljava/lang/String;"), stringToJstring(env,MetaData.album));
+    env->SetObjectField(data, env->GetFieldID(datacls, "MetaArtwork", "Ljava/lang/String;"), stringToJstring(env,MetaData.artwork));
+    env->SetObjectField(data, env->GetFieldID(datacls, "MetaComment", "Ljava/lang/String;"), stringToJstring(env,MetaData.comment));
+    env->SetObjectField(data, env->GetFieldID(datacls, "MetaGenre", "Ljava/lang/String;"), stringToJstring(env,MetaData.genre));
+    env->SetObjectField(data, env->GetFieldID(datacls, "MetaTitle", "Ljava/lang/String;"), stringToJstring(env,MetaData.title));
+    
+    return ret;
+}
+
+
 // ----------------------------------------------------------------------------
 //the native method need to be registered
 static JNINativeMethod gMethods[] = {
@@ -220,6 +245,7 @@ static JNINativeMethod gMethods[] = {
 {"Stop",             "()I",	                            (void *)com_o2_airplay_Stop},
 {"SetHostName",      "(Lcom/o2/airplay/AirplayData;)I", (void *)com_o2_airplay_SetHostName},
 {"GetHostName",      "(Lcom/o2/airplay/AirplayData;)I", (void *)com_o2_airplay_GetHostName},
+{"GetMetadata",      "(Lcom/o2/airplay/AirplayData;)I", (void *)com_o2_airplay_GetMetaData},
 
 };
 

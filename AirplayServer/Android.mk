@@ -5,7 +5,8 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := main_AirplayServer.cpp
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../include \
-                    $(LOCAL_PATH)/../libAirplayService
+                    $(LOCAL_PATH)/../libAirplayService \
+                    external/airplay/shairport
 
 LOCAL_SHARED_LIBRARIES := liblog libutils libcutils libbinder libairplayService
 LOCAL_MODULE := airplayServer

@@ -184,6 +184,18 @@ int Airplay::GetHostName(char *apname)
     return mAirplay->GetHostName(apname);
 }
 
+int Airplay::GetMetaData(MetaData_t *MetaData)
+{
+    TRACE();
+    if(mAirplay == NULL)
+    {
+        return -1;
+    }
+
+    return mAirplay->GetMetaData(MetaData);
+}
+
+
 status_t Airplay::setListener(const sp<AirplayListener>& listener)
 {
     TRACE();
@@ -230,6 +242,18 @@ void Airplay::notify(int msg, int ext1, int ext2)
     ALOGV("message received msg=%d, ext1=%d, ext2=%d", msg, ext1, ext2);
 
     switch (msg) {
+        case MEDIA_PREPARED:
+            ALOGW("prepare (%d, %d)", ext1, ext2);
+            break;
+        case MEDIA_STARTED:
+            ALOGW("start (%d, %d)", ext1, ext2);
+            break;
+        case MEDIA_PAUSED:
+            ALOGW("pause (%d, %d)", ext1, ext2);
+            break;
+        case MEDIA_STOPPED:
+            ALOGW("stop (%d, %d)", ext1, ext2);
+            break;
         case MEDIA_ERROR:
             ALOGE("error (%d, %d)", ext1, ext2);
             break;

@@ -1,6 +1,6 @@
 
 #define LOG_TAG "IAirplay"
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -69,7 +69,17 @@ public:
 		remote()->transact(IAirplay::GET_HOSTNAME, data, &reply);
         reply.read(apname, 128);
 		return (reply.readInt32());
-	}	    
+	}
+
+	virtual int GetMetaData(MetaData_t *MetaData) 
+	{
+		TRACE();
+		Parcel data, reply;
+		data.writeInterfaceToken(IAirplay::getInterfaceDescriptor()); 
+		remote()->transact(IAirplay::GET_METADATA, data, &reply);
+        reply.read(MetaData, sizeof(MetaData_t));
+		return (reply.readInt32());
+	}	     
 
 };
 IMPLEMENT_META_INTERFACE(Airplay, "android.IAirplay");
@@ -110,6 +120,15 @@ status_t BnAirplay::onTransact(
 		reply->writeInt32(ret);
 		return NO_ERROR;
 		} break;
+
+	case GET_METADATA: {
+		CHECK_INTERFACE(IAirplay, data, reply);
+        MetaData_t MetaData;
+        int ret = GetMetaData(&MetaData);
+        reply->write(&MetaData, sizeof(MetaData));
+		reply->writeInt32(ret);
+		return NO_ERROR;
+		} break;    
     
 	default:
 		return BBinder::onTransact(code, data, reply, flags);

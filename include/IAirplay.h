@@ -9,8 +9,9 @@
 
 #include <binder/IMemory.h>
 
-namespace android {
+#include "airplay.h"
 
+namespace android {
 
 class IAirplay : public IInterface
 {
@@ -21,13 +22,15 @@ public:
         STOP,
         SET_HOSTNAME,
         GET_HOSTNAME,
+        GET_METADATA,
     };
     DECLARE_META_INTERFACE(Airplay);//must need
     virtual void disconnect() = 0;
     virtual int Start() = 0; 
     virtual int Stop() = 0;
     virtual int SetHostName(const char *apname) = 0;
-    virtual int GetHostName(char *apname) = 0;     
+    virtual int GetHostName(char *apname) = 0;
+    virtual int GetMetaData(MetaData_t *MetaData) = 0; 
 };
 
 class BnAirplay: public BnInterface<IAirplay>

@@ -11,7 +11,7 @@ import java.lang.ref.WeakReference;
 
 
 public class Airplay {
-    private final static String TAG = "Airplay";
+    private final static String TAG = "Airplay-JAVA";
 	private EventHandler mEventHandler;
 
     public Airplay() {
@@ -31,16 +31,12 @@ public class Airplay {
     }	
 
     private static final int MEDIA_NOP = 0; // interface test message
-    private static final int MEDIA_PREPARED = 1;
+    private static final int MEDIA_PREPARED = 1; //start airplay service
     private static final int MEDIA_PLAYBACK_COMPLETE = 2;
     private static final int MEDIA_BUFFERING_UPDATE = 3;
-    private static final int MEDIA_SEEK_COMPLETE = 4;
-    private static final int MEDIA_SET_VIDEO_SIZE = 5;
-    private static final int MEDIA_STARTED = 6;
-    private static final int MEDIA_PAUSED = 7;
-    private static final int MEDIA_STOPPED = 8;
-    private static final int MEDIA_SKIPPED = 9;
-    private static final int MEDIA_TIMED_TEXT = 99;
+    private static final int MEDIA_STARTED = 4; //start playing
+    private static final int MEDIA_PAUSED = 5;
+    private static final int MEDIA_STOPPED = 6; //stop airplay service
     private static final int MEDIA_ERROR = 100;	// used
     private static final int MEDIA_INFO = 200;	// used
 
@@ -58,17 +54,30 @@ public class Airplay {
         //Log.v(TAG, "handleMessage: " + msg.what +" " + msg.arg1 + " " + msg.arg2);
             switch(msg.what) {
             case MEDIA_PREPARED:
-                return;
-            case MEDIA_PLAYBACK_COMPLETE:
+                if (mOnPreparedListener != null) {
+                    mOnPreparedListener.onPrepared(mAirplay, msg.arg1, msg.arg2);
+                }				
                 return;
             case MEDIA_STOPPED:
-                break;
-            case MEDIA_STARTED:
-				break;
-            case MEDIA_PAUSED:
-                break;
-            case MEDIA_BUFFERING_UPDATE:
+				if (mOnStoppedListener != null){
+					mOnStoppedListener.onStopped(mAirplay, msg.arg1, msg.arg2);
+				}
                 return;
+            case MEDIA_STARTED:
+				if (mOnStartedListener != null){
+					mOnStartedListener.onStarted(mAirplay, msg.arg1, msg.arg2);
+				}
+				return;
+            case MEDIA_PAUSED:
+				if (mOnPausedListener != null){
+					mOnPausedListener.onPaused(mAirplay, msg.arg1, msg.arg2);
+				}
+				return;
+            case MEDIA_BUFFERING_UPDATE:
+				if (mOnBufferUpdateListener!= null){
+					mOnBufferUpdateListener.onBufferUpdate(mAirplay, msg.arg1, msg.arg2);
+				}
+				return;
             case MEDIA_ERROR:
                 Log.e(TAG, "Error (" + msg.arg1 + "," + msg.arg2 + ")");
                 boolean error_was_handled = false;
@@ -105,7 +114,61 @@ public class Airplay {
             ap.mEventHandler.sendMessage(m);
         }
     }
+
+    public interface OnPreparedListener
+    {
+        boolean onPrepared(Airplay ap, int what, int extra);
+    }
 	
+    public void setOnPreparedListener(OnPreparedListener listener)
+    {
+        mOnPreparedListener = listener;
+    }
+	private OnPreparedListener mOnPreparedListener;
+
+    public interface OnBufferUpdateListener
+    {
+        boolean onBufferUpdate(Airplay ap, int what, int extra);
+    }
+	
+    public void setOnBufferUpdateListener(OnBufferUpdateListener listener)
+    {
+        mOnBufferUpdateListener = listener;
+    }
+	private OnBufferUpdateListener mOnBufferUpdateListener;
+
+    public interface OnStartedListener
+    {
+        boolean onStarted(Airplay ap, int what, int extra);
+    }
+	
+    public void setOnStartedListener(OnStartedListener listener)
+    {
+        mOnStartedListener = listener;
+    }
+	private OnStartedListener mOnStartedListener;
+
+    public interface OnPausedListener
+    {
+        boolean onPaused(Airplay ap, int what, int extra);
+    }
+	
+    public void setOnPausededListener(OnPausedListener listener)
+    {
+        mOnPausedListener = listener;
+    }
+	private OnPausedListener mOnPausedListener;		
+
+    public interface OnStoppedListener
+    {
+        boolean onStopped(Airplay ap, int what, int extra);
+    }
+	
+    public void setOnStoppededListener(OnStoppedListener listener)
+    {
+        mOnStoppedListener = listener;
+    }
+	private OnStoppedListener mOnStoppedListener;		
 
     public static final int MEDIA_ERROR_UNKNOWN = 1;
     public static final int MEDIA_ERROR_SERVER_DIED = 100;
@@ -125,17 +188,13 @@ public class Airplay {
 
 
     public static final int MEDIA_INFO_UNKNOWN = 1;
-    public static final int MEDIA_INFO_STARTED_AS_NEXT = 2;
-    public static final int MEDIA_INFO_VIDEO_RENDERING_START = 3;
 	public static final int MEDIA_INFO_CLIENT_CONNECTED = 600; //client connected
 	public static final int MEDIA_INFO_CLIENT_DISCONNECTED = 601; // client disconnected	
-    public static final int MEDIA_INFO_VIDEO_TRACK_LAGGING = 700;
-    public static final int MEDIA_INFO_BUFFERING_START = 701;
-    public static final int MEDIA_INFO_BUFFERING_END = 702;
-    public static final int MEDIA_INFO_BAD_INTERLEAVING = 800;
-    public static final int MEDIA_INFO_NOT_SEEKABLE = 801;
-    public static final int MEDIA_INFO_METADATA_UPDATE = 802;
-    public static final int MEDIA_INFO_EXTERNAL_METADATA_UPDATE = 803;
+    public static final int MEDIA_INFO_BUFFERING_START = 700;
+    public static final int MEDIA_INFO_BUFFERING_END = 701;
+	public static final int MEDIA_INFO_NETWORK_BANDWIDTH = 702;
+    public static final int MEDIA_INFO_METADATA_UPDATE = 800;
+	public static final int	MEDIA_INFO_VOLUME_CONFIG = 900;
 
     public interface OnInfoListener
     {
@@ -165,12 +224,17 @@ public class Airplay {
 		return GetHostName(data);
 	}
 
+	public int GetMetaData(AirplayData data){
+		return GetMetadata(data);
+	}	
+
     private static native final void native_init();
     private native final void native_setup(Object airplay_this);
 	private native int Start();
 	private native int Stop();
 	private native int SetHostName(AirplayData data);
 	private native int GetHostName(AirplayData data);
+	private native int GetMetadata(AirplayData data);
 	
     static {
         try{

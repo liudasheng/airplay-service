@@ -13,12 +13,9 @@ enum media_event_type {
     MEDIA_PREPARED          = 1,
     MEDIA_PLAYBACK_COMPLETE = 2,
     MEDIA_BUFFERING_UPDATE  = 3,
-    MEDIA_SEEK_COMPLETE     = 4,
-    MEDIA_SET_VIDEO_SIZE    = 5,
-    MEDIA_STARTED           = 6,
-    MEDIA_PAUSED            = 7,
-    MEDIA_STOPPED           = 8,
-    MEDIA_SKIPPED           = 9,
+    MEDIA_STARTED           = 4,
+    MEDIA_PAUSED            = 5,
+    MEDIA_STOPPED           = 6,
     MEDIA_ERROR             = 100,
     MEDIA_INFO              = 200,
 };
@@ -72,53 +69,25 @@ enum media_error_type {
 enum media_info_type {
     // 0xx
     MEDIA_INFO_UNKNOWN = 1,
-    // The player was started because it was used as the next player for another
-    // player, which just completed playback
-    MEDIA_INFO_STARTED_AS_NEXT = 2,
-    // The player just pushed the very first video frame for rendering
-    MEDIA_INFO_RENDERING_START = 3,
     // 6xx
     // client devices statues 
     MEDIA_INFO_CLIENT_CONNECTED = 600,
     MEDIA_INFO_CLIENT_DISCONNECTED = 601,
     // 7xx
-    // The video is too complex for the decoder: it can't decode frames fast
-    // enough. Possibly only the audio plays fine at this stage.
-    MEDIA_INFO_VIDEO_TRACK_LAGGING = 700,
     // MediaPlayer is temporarily pausing playback internally in order to
     // buffer more data.
-    MEDIA_INFO_BUFFERING_START = 701,
+    MEDIA_INFO_BUFFERING_START = 700,
     // MediaPlayer is resuming playback after filling buffers.
-    MEDIA_INFO_BUFFERING_END = 702,
+    MEDIA_INFO_BUFFERING_END = 701,
     // Bandwidth in recent past
-    MEDIA_INFO_NETWORK_BANDWIDTH = 703,
-
+    MEDIA_INFO_NETWORK_BANDWIDTH = 702,
     // 8xx
-    // Bad interleaving means that a media has been improperly interleaved or not
-    // interleaved at all, e.g has all the video samples first then all the audio
-    // ones. Video is playing but a lot of disk seek may be happening.
-    MEDIA_INFO_BAD_INTERLEAVING = 800,
-    // The media is not seekable (e.g live stream).
-    MEDIA_INFO_NOT_SEEKABLE = 801,
+    // metadata info 
     // New media metadata is available.
-    MEDIA_INFO_METADATA_UPDATE = 802,
-
+    MEDIA_INFO_METADATA_UPDATE = 800,
     //9xx
-    MEDIA_INFO_TIMED_TEXT_ERROR = 900,
-	
-};
-
-
-enum media_player_states {
-    MEDIA_PLAYER_STATE_ERROR        = 0,
-    MEDIA_PLAYER_IDLE               = 1 << 0,
-    MEDIA_PLAYER_INITIALIZED        = 1 << 1,
-    MEDIA_PLAYER_PREPARING          = 1 << 2,
-    MEDIA_PLAYER_PREPARED           = 1 << 3,
-    MEDIA_PLAYER_STARTED            = 1 << 4,
-    MEDIA_PLAYER_PAUSED             = 1 << 5,
-    MEDIA_PLAYER_STOPPED            = 1 << 6,
-    MEDIA_PLAYER_PLAYBACK_COMPLETE  = 1 << 7
+    // volume
+    MEDIA_INFO_VOLUME_CONFIG = 900,
 };
 
 
@@ -140,6 +109,7 @@ public:
     virtual int Stop(); 
     virtual int SetHostName(const char *apname);
     virtual int GetHostName(char *apname); 
+    virtual int GetMetaData(MetaData_t *MetaData); 
     
     status_t setListener(const sp<AirplayListener>& listener);
     void  notify(int msg, int ext1, int ext2);

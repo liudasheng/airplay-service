@@ -42,6 +42,7 @@ private:
         virtual int Stop();
         virtual int SetHostName(const char *apname);
         virtual int GetHostName(char *apname);
+        virtual int GetMetaData(MetaData_t *MetaData);
         
         const sp<IAirplayClient>& getAirplayClient() const
         {

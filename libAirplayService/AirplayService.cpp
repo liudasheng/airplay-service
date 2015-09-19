@@ -169,6 +169,19 @@ int AirplayService::Client::GetHostName(char *apname)
 	return get_airplay_hostname(apname);
 }
 
+int AirplayService::Client::GetMetaData(MetaData_t *MetaData)
+{	
+	TRACE();
+	int ret = get_metadata(MetaData);
+
+    ALOGV("%s album: %s\n", __func__,MetaData->album);
+    ALOGV("%s artist: %s\n", __func__,MetaData->artist);
+    ALOGV("%s genre: %s\n", __func__,MetaData->genre);
+    ALOGV("%s title: %s\n", __func__,MetaData->title);    
+
+    return ret;
+}
+
 
 };//namespace android
 //---------------------------------------------------------------------

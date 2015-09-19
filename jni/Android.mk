@@ -7,7 +7,8 @@ LOCAL_SRC_FILES += \
         
 
 LOCAL_C_INCLUDES += $(JNI_H_INCLUDE) \
-                    $(LOCAL_PATH)/../include
+                    $(LOCAL_PATH)/../include \
+                    external/airplay/shairport 
 
 LOCAL_SHARED_LIBRARIES := \
     libandroid_runtime \
